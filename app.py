@@ -18,9 +18,10 @@ def close_connection(conn, cur):
     cur.close()
 
 class User:
-    def __init__(self, login, password):
+    def __init__(self, login, password, image_url='/uploads/СНИМОК.PNG'):
         self.login = login
         self.password = password
+        self.image_url = image_url
 
 @app.route('/')
 def index():
@@ -69,10 +70,10 @@ def get_user(user_id=None):
     connection, cursor = get_connection()
 
     if user_id is None:
-        cursor.execute('''SELECT login, password FROM USERS''')
+        cursor.execute('''SELECT login, password, image_link FROM USERS''')
         users_data = cursor.fetchall()
         close_connection(connection, cursor)
-        return [User(i[0], i[1]).__dict__ for i in users_data]
+        return [User(i[0], i[1], i[2]).__dict__ for i in users_data]
 
     cursor.execute('''
         SELECT * 
@@ -86,6 +87,39 @@ def get_user(user_id=None):
 
     return User(user_data[0][0], user_data[0][1]).__dict__
 
+UPLOAD_FOLDER = './files'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+@app.route('/files')
+def files():
+    return render_template('file_form.html')
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/files/add', methods=['POST'])
+def add_file():
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        return abort(400, 'No file')
+    file = request.files['file']
+    # If the user does not select a file, the browser submits an
+    # empty file without a filename.
+    if file.filename == '':
+        return abort(400, 'No filename')
+    if file and allowed_file(file.filename):
+        filename = file.filename
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return redirect(url_for('download_file', name=filename))
+
+    return redirect(url_for('files'))
+
+@app.route('/uploads/<name>')
+def download_file(name):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], name)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000)
