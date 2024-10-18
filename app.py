@@ -18,10 +18,11 @@ def close_connection(conn, cur):
     cur.close()
 
 class User:
-    def __init__(self, login, password, image_url='/uploads/СНИМОК.PNG'):
+    def __init__(self, login, password, user_order, image_url='/uploads/СНИМОК.PNG'):
         self.login = login
         self.password = password
         self.image_url = image_url
+        self.user_order = user_order
 
 @app.route('/')
 def index():
@@ -70,13 +71,13 @@ def get_user(user_id=None):
     connection, cursor = get_connection()
 
     if user_id is None:
-        cursor.execute('''SELECT login, password, image_link FROM USERS''')
+        cursor.execute('''SELECT login, password, user_order, image_link FROM USERS''')
         users_data = cursor.fetchall()
         close_connection(connection, cursor)
-        return [User(i[0], i[1], i[2]).__dict__ for i in users_data]
+        return [User(i[0], i[1], i[2], i[3]).__dict__ for i in users_data]
 
     cursor.execute('''
-        SELECT * 
+        SELECT login, password, user_order, image_link
         FROM USERS 
         WHERE user_order=%s''', [user_id])
 
@@ -85,7 +86,7 @@ def get_user(user_id=None):
     if user_data.__len__() == 0:
         return abort(404, f"User with id {user_id} not found")
 
-    return User(user_data[0][0], user_data[0][1]).__dict__
+    return User(user_data[0][0], user_data[0][1], user_data[0][2], user_data[0][3]).__dict__
 
 UPLOAD_FOLDER = './files'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
